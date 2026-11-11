@@ -28,3 +28,5 @@ Comprobación manual sobre la compilación estática en un origen nuevo (`127.0.
 4. Comprobar la pantalla a 390 × 844: navegación móvil, controles de descarga de al menos 44 px y ausencia de elementos que desborden el ancho disponible.
 
 La primera revisión de tipos y las cuatro pruebas existentes pasan. La publicación vuelve a verificar tipos, pruebas y compilación sobre el commit final.
+
+PNG → ICO: prueba adicional del worker real con PNG transparentes de 64 × 64, 1024 × 1024, 1920 × 1080, 400 × 800 y 1 × 4096. En todos los casos produce ICO válidos, con dimensiones de cada variante dentro de 1–256 px y entradas contenidas en el archivo. Se ejecuta con `bun run test:images` y se incorpora a GitHub Actions. Esto no reproduce ni identifica el problema de un PNG concreto del usuario que no se ha proporcionado.

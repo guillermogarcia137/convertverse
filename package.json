@@ -11,7 +11,8 @@
     "migrate:messages": "node scripts/migrate-language-keys.mjs",
     "format": "prettier --write .",
     "lint": "eslint .",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:images": "bun test/png-to-ico.worker.mjs"
   },
   "imports": {
     "#lib": "./src/lib/index.js",
