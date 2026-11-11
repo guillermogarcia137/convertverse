@@ -8,8 +8,8 @@
   const groups=[{id:'image',name:'Imágenes',icon:ImageIcon,desc:'Iconos, fotos y gráficos. PNG, ICO, JPG, SVG, WebP…'},{id:'doc',name:'Documentos',icon:FileTextIcon,desc:'DOCX a PDF, Markdown, HTML, EPUB, ODT y más.'},{id:'audio',name:'Audio',icon:AudioLinesIcon,desc:'MP3, WAV, FLAC, OGG, AAC y otros formatos.'},{id:'video',name:'Vídeo',icon:FilmIcon,desc:'MP4, WebM, MOV y más, según códec y navegador.'}];
   const quick=[{from:'DOCX',to:'PDF'},{from:'PNG',to:'ICO'},{from:'ICO',to:'PNG'},{from:'JPG',to:'WEBP'},{from:'WAV',to:'MP3'}];
   function formats(group:string){return [...new Set(converters.filter(c=>(converterCategories as Record<string,string[]>)[group]?.includes(c.name)).flatMap(c=>c.supportedFormats.map(f=>f.name)))].sort();}
-  function select(from='',to=''){target=to?'.'+to.toLowerCase():'';picker.accept=from?'.'+from.toLowerCase():'';picker.click();}
-  async function add(){const old=new Set(files.files.map(f=>f.id));await files.addAsync(picker.files);for(const file of files.files)if(!old.has(file.id)&&target){file.to=target;file.preferredTarget=target;}picker.value='';if(files.files.some(f=>!old.has(f.id)))await goto(resolve('/convert'));}
+  function select(from='',to=''){target=to?'.'+to.toLowerCase():'';picker.accept=from==='JPG'?'.jpg,.jpeg':from?'.'+from.toLowerCase():'';picker.click();}
+  async function add(){const old=new Set(files.files.map(f=>f.id));await files.addAsync(picker.files);for(const file of files.files)if(!old.has(file.id)&&target){file.to=target;file.preferredTarget=target;files.preloadConverters(file);}picker.value='';if(files.files.some(f=>!old.has(f.id)))await goto(resolve('/convert'));}
   async function example(from:string,to:string){
     loadingSample=true;sampleError='';
     try{
@@ -17,7 +17,7 @@
       if(!response.ok)throw new Error('No se ha podido cargar el ejemplo.');
       const previous=new Set(files.files.map(file=>file.id));
       await files.addAsync([new File([await response.blob()],name)]);
-      for(const file of files.files)if(!previous.has(file.id)){file.to='.'+to;file.preferredTarget='.'+to;}
+      for(const file of files.files)if(!previous.has(file.id)){file.to='.'+to;file.preferredTarget='.'+to;files.preloadConverters(file);}
       await goto(resolve('/convert'));
     }catch(error){sampleError=error instanceof Error?error.message:'No se ha podido preparar el ejemplo.';}
     finally{loadingSample=false;}

@@ -9,7 +9,7 @@
 </script>
 <a class="cv-skip" href="#cv-main">Saltar al contenido</a>
 <aside class="cv-sidebar">
-  <a class="cv-brand" href={resolve('/')}><span class="cv-brand-mark">CV<span></span></span><strong>ConvertVerse<small>YOUR FILES. NEW POSSIBILITIES.</small></strong></a>
+  <a class="cv-brand" href={resolve('/')}><span class="cv-brand-mark">CV<span></span></span><strong>ConvertVerse<small>TUS ARCHIVOS. TU ESTILO.</small></strong></a>
   <p class="cv-eyebrow cv-nav-caption">TU ESPACIO</p>
   <nav aria-label="Navegación principal">{#each links as item,i}{@const Icon=item.icon}<a href={item.url} class:active={page.url.pathname===item.url||page.url.pathname===item.url+'/'}><span class="cv-nav-number">0{i+1}</span><Icon size={18}/><span>{item.title}</span>{#if item.url===resolve('/convert')}<small>{files.files.length}</small>{/if}</a>{/each}</nav>
   <div class="cv-project-links"><a href="https://guillermogarcia137.github.io/panelverse/" target="_blank" rel="noopener noreferrer">PanelVerse <ArrowUpRightIcon size={15}/></a><a href="https://github.com/guillermogarcia137/convertverse" target="_blank" rel="noopener noreferrer">Repositorio <ArrowUpRightIcon size={15}/></a></div>

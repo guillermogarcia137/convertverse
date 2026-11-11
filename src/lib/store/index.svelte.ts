@@ -530,11 +530,13 @@ class Files {
 			const candidates = category
 				? categories[category].formats
 				: converter.formatStrings();
-			const to = candidates.find(
-				(f) => f !== format && input.hasAvailableConverter(format, f),
-			);
+            const preferences = readSettings<{useDefaultFormat?: boolean; defaultFormat?: Record<string,string>}>();
+            const savedTarget = preferences.useDefaultFormat ? preferences.defaultFormat?.[category === 'doc' ? 'document' : category ?? ''] : undefined;
+            const to = savedTarget && savedTarget !== format && input.hasAvailableConverter(format, savedTarget)
+                ? savedTarget : candidates.find((f) => f !== format && input.hasAvailableConverter(format, f));
 			if (!to) {
 				log(["files"], `no output format found for ${file.name}`);
+				this.files.push(input);
 				return;
 			}
 			const vf = input;
@@ -613,8 +615,9 @@ class Files {
 	}
 
 	public async convertAll() {
-		const filenames = this.files.map((file) => file.name);
-		const promiseFns = this.files.map((f) => () => f.convert());
+		const pending = this.files.filter((file) => !file.result && !file.processing && (file.isZip() || file.findConverters([file.from, file.to]).length));
+		const filenames = pending.map((file) => file.name);
+		const promiseFns = pending.map((f) => () => f.convert());
 		const queue = new PQueue({ concurrency: conversionConcurrency() });
 		const results = await Promise.allSettled(
 			promiseFns.map((fn) => queue.add(fn)),
@@ -647,7 +650,7 @@ class Files {
 			let to = result.to;
 			if (!to.startsWith(".")) to = `.${to}`;
 
-			filenames.push(file.file.name.replace(/\.[^/.]+$/, "") + to);
+			filenames[i] = file.file.name.replace(/\.[^/.]+$/, "") + to;
 		}
 
 		let totalSize = 0;

@@ -19,14 +19,16 @@ export interface CacheInfo {
 
 class ServiceWorkerManager {
 	private registration: ServiceWorkerRegistration | null = null;
-	private initialized = false;
+	private initialization: Promise<void> | null = null;
+    public reloading = false;
 
-	async init(): Promise<void> {
-		if (!browser || !("serviceWorker" in navigator) || this.initialized) {
-			return;
-		}
+    init(): Promise<void> {
+        if (!browser || !("serviceWorker" in navigator)) return Promise.resolve();
+        return this.initialization ??= this.register();
+    }
 
-		try {
+    private async register(): Promise<void> {
+        try {
 			this.registration = await navigator.serviceWorker.register(
 				`${base}/sw.js`,
 				{
@@ -34,9 +36,15 @@ class ServiceWorkerManager {
 				},
 			);
 
-			this.initialized = true;
+			
 
-			await navigator.serviceWorker.ready;
+			            let timeout: ReturnType<typeof setTimeout> | undefined;
+            try {
+                await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('Service worker preparation timed out')), 15000); })
+                ]);
+            } finally { if (timeout) clearTimeout(timeout); }
 			this.ensureCrossOriginIsolation();
 		} catch (error) {
 			console.error(
@@ -89,7 +97,8 @@ class ServiceWorkerManager {
 		console.log(
 			"[SW Manager] reloading to let the service worker enable cross-origin isolation",
 		);
-		window.location.reload();
+		this.reloading = true;
+        window.location.reload();
 	}
 
 	async getCacheInfo(): Promise<CacheInfo> {

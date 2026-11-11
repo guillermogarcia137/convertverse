@@ -116,6 +116,7 @@ export class VertFile {
 	public conversionSettings = $state<ConversionSettings>({}); // empty object / key = default
 	public progress = $state(0);
 	public result = $state<VertFile | null>(null);
+	public conversionError = $state("");
 	public blobUrl = $state<string>();
 	public processing = $state(false);
 	public cancelled = $state(false);
@@ -426,7 +427,9 @@ export class VertFile {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async convert(...args: any[]) {
-		if (this.disposed) return;
+		if (this.disposed || this.processing) return;
+		this.processing = true;
+		this.conversionError = "";
 		if (!this.retryingFallback) this.attemptedConverters.clear();
 		this.cancelled = false;
 		let res: VertFile | undefined;
@@ -546,6 +549,7 @@ export class VertFile {
 			}
 
 			log(["file", "convert"], `using converter: ${converter.name}`);
+			if (this.cancelled || this.disposed) return;
 
 			await this.result?.dispose();
 			this.result = null;
@@ -900,6 +904,7 @@ export class VertFile {
 		// });
 
 		if (typeof toastMsg === "string") {
+			this.conversionError = toastMsg;
 			ToastManager.add({
 				type: "error",
 				message: m["workers.errors.general"]({
@@ -985,8 +990,8 @@ export class VertFile {
 		a.href = blob;
 		a.download = filename;
 		// force it to not open in a new tab
-		a.target = "_blank";
 		a.style.display = "none";
+		document.body.appendChild(a);
 		a.click();
 		setTimeout(() => {
 			URL.revokeObjectURL(blob);
