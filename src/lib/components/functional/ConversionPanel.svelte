@@ -1,0 +1,145 @@
+<script lang="ts">
+	import { effects, files, isMobile } from "#lib/store/index.svelte";
+	import {
+		FolderArchiveIcon,
+		RefreshCwIcon,
+		TrashIcon,
+	} from "@lucide/svelte";
+	import Panel from "../visual/Panel.svelte";
+	import Dropdown from "./Dropdown.svelte";
+	import Tooltip from "../visual/Tooltip.svelte";
+	import ProgressBar from "../visual/ProgressBar.svelte";
+	import FormatDropdown from "./FormatDropdown.svelte";
+	import { categories } from "#lib/converters";
+	import { m } from "#lib/paraglide/messages";
+	import { clsx } from "clsx";
+
+	const length = $derived(files.files.length);
+	const progress = $derived(files.files.filter((f) => f.result).length);
+	const manyFiles = $derived(files.files.length > 50);
+	const compactActions = $derived(manyFiles && !$isMobile);
+	const canSetAll = $derived.by(() => {
+		const [firstFile, ...otherFiles] = files.files;
+		if (!firstFile?.converters.length) return false;
+
+		const converterNames = new Set(
+			firstFile.converters.map((converter) => converter.name),
+		);
+		if (otherFiles.some((file) => !file.converters.length)) return false;
+
+		return otherFiles.every((file) => {
+			const names = new Set(
+				file.converters.map((converter) => converter.name),
+			);
+			return (
+				names.size === converterNames.size &&
+				[...converterNames].every((name) => names.has(name))
+			);
+		});
+	});
+</script>
+
+<Panel class="flex flex-col gap-4">
+	<div
+		class="flex h-auto w-full flex-col items-center justify-between gap-4 md:flex-row"
+	>
+		<div
+			class="flex flex-col items-center gap-2.5 max-md:w-full md:flex-row"
+		>
+			<button
+				onclick={() => files.convertAll()}
+				class={clsx(
+					"btn highlight flex gap-3 max-md:w-full",
+					!$effects && "!scale-100",
+					compactActions ? "p-4" : "md:max-w-[15.5rem]",
+				)}
+				disabled={!files.allReady}
+			>
+				<RefreshCwIcon size="24" />
+				{#if !compactActions}
+					<p>{m["convert.panel.convert_all"]()}</p>
+				{/if}
+			</button>
+			<button
+				class={clsx(
+					"btn flex gap-3 max-md:w-full",
+					!$effects && "!scale-100",
+					compactActions ? "p-4" : "md:max-w-[15.5rem]",
+				)}
+				disabled={!files.allReady || !files.results}
+				onclick={() => files.downloadAll()}
+			>
+				<FolderArchiveIcon size="24" />
+				{#if !compactActions}
+					<p>{m["convert.panel.download_all"]()}</p>
+				{/if}
+			</button>
+			{#if $isMobile}
+				<button
+					class={clsx(
+						"btn flex gap-3 p-4 max-md:w-full",
+						!$effects && "!scale-100",
+					)}
+					disabled={files.files.length === 0}
+					onclick={() => files.removeAll()}
+				>
+					<TrashIcon size="24" />
+					<p>{m["convert.panel.remove_all"]()}</p>
+				</button>
+			{:else}
+				<Tooltip
+					text={m["convert.panel.remove_all"]()}
+					position="right"
+				>
+					<button
+						class={clsx(
+							"btn flex gap-3 p-4 max-md:w-full",
+							!$effects && "!scale-100",
+						)}
+						disabled={files.files.length === 0}
+						onclick={() => files.removeAll()}
+					>
+						<TrashIcon size="24" />
+					</button>
+				</Tooltip>
+			{/if}
+		</div>
+		<div class="flex h-0.5 w-full bg-separator md:hidden"></div>
+		{#if manyFiles}
+			<div class="flex w-full max-w-64 items-center gap-4 p-2">
+				<div
+					class="-mt-0.5 flex-shrink-0 text-sm font-normal text-muted"
+				>
+					{progress}/{length}
+				</div>
+				<div class="flex-grow">
+					<ProgressBar min={0} max={length} {progress} />
+				</div>
+			</div>
+			<div class="flex h-0.5 w-full bg-separator md:hidden"></div>
+		{/if}
+		<div class="flex w-fit items-center gap-2">
+			<p
+				class="w-fit whitespace-normal px-2 text-center text-xl md:px-0 md:text-right"
+			>
+				{m["convert.panel.set_all_to"]()}
+			</p>
+			<div class="w-[122px]">
+				{#if canSetAll}
+					<FormatDropdown
+						allowEmpty
+						onselect={(r) =>
+							files.files.forEach((f) => {
+								f.to = r;
+								f.result = null;
+							})}
+						{categories}
+						dropdownSize="large"
+					/>
+				{:else}
+					<Dropdown options={[m["convert.panel.na"]()]} disabled />
+				{/if}
+			</div>
+		</div>
+	</div></Panel
+>

@@ -1,0 +1,293 @@
+<script lang="ts">
+	import Panel from "#lib/components/visual/Panel.svelte";
+	import { GITHUB_URL_VERTD } from "#lib/util/consts";
+	import { ServerIcon } from "@lucide/svelte";
+	import type { ISettings } from "./index.svelte";
+	import clsx from "clsx";
+	import Dropdown from "#lib/components/functional/Dropdown.svelte";
+	import { vertdLoaded } from "#lib/store/index.svelte";
+	import { m } from "#lib/paraglide/messages";
+	import { link, sanitize } from "#lib/store/index.svelte";
+	import {
+		VertdInstance,
+		getVertdCustomHeaders,
+		vertdSizeLimit,
+		type VertdInner,
+	} from "./vertdSettings.svelte";
+	import FancyInput from "#lib/components/functional/FancyInput.svelte";
+	import { formatBytes } from "#lib/util/file";
+
+	let vertdCommit = $state<string | null>(null);
+	let abortController: AbortController | null = null;
+
+	const vertdStatusLabel = $derived.by(() => {
+		if (vertdCommit === null) return m["settings.vertd.unavailable"]();
+		if (vertdCommit === "loading") return m["settings.vertd.loading"]();
+		// legacy commitId passed into message for languages that aren't updated yet (and to avoid "undefined" showing)
+		return m["settings.vertd.available"]({ commitId: vertdCommit });
+	});
+
+	const { settings = $bindable() }: { settings: ISettings } = $props();
+
+	const vertdSizeLimitLabel = $derived.by(() => {
+		if (vertdCommit === null) return "N/A";
+		const size = formatBytes($vertdSizeLimit);
+		return size === "0 B" ? "unlimited" : size;
+	});
+
+	$effect(() => {
+		if (abortController) abortController.abort();
+		abortController = new AbortController();
+		const { signal } = abortController;
+
+		vertdCommit = "loading";
+		VertdInstance.instance
+			.url()
+			.then((u) =>
+				fetch(`${u}/api/version`, {
+					signal,
+					headers: getVertdCustomHeaders(),
+				}),
+			)
+			.then((res) => {
+				if (!res.ok) throw new Error("bad response");
+				vertdLoaded.set(false);
+				return res.json();
+			})
+			.then((data) => {
+				vertdCommit = data.data;
+				vertdLoaded.set(true);
+			})
+			.catch((err) => {
+				if (err.name !== "AbortError") {
+					vertdCommit = null;
+					vertdLoaded.set(false);
+				}
+			});
+
+		return () => {
+			if (abortController) abortController.abort();
+		};
+	});
+</script>
+
+<Panel class="flex flex-col gap-8 p-6">
+	<div class="flex flex-col gap-4">
+		<h2 class="text-2xl font-bold">
+			<ServerIcon
+				size="40"
+				class="-mt-1 mr-2 inline-block overflow-visible rounded-full bg-accent-red p-2"
+				color="black"
+			/>
+			{m["settings.vertd.title"]()}
+		</h2>
+		<div class="flex flex-col gap-4">
+			<p
+				class={clsx("text-sm font-normal", {
+					"text-failure": vertdCommit === null,
+					"text-green-700 dynadark:text-green-300":
+						vertdCommit !== null,
+					"!text-muted": vertdCommit === "loading",
+				})}
+			>
+				{m["settings.vertd.status"]()}
+				{vertdStatusLabel}
+			</p>
+
+			<p class="text-sm font-normal text-muted">
+				{@html sanitize(m["settings.vertd.description.main"]())}
+			</p>
+			<p class="text-sm font-normal text-muted">
+				{@html sanitize(
+					link(
+						"vertd_link",
+						m["settings.vertd.description.info"](),
+						GITHUB_URL_VERTD,
+					),
+				)}
+			</p>
+			<p class="text-sm font-normal text-muted">
+				{@html sanitize(
+					link(
+						"vertd_link",
+						m["settings.vertd.description.more"](),
+						GITHUB_URL_VERTD,
+					),
+				)}
+			</p>
+		</div>
+
+		<div class="flex flex-col gap-8">
+			<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<p class="text-base font-bold">
+						{m["settings.vertd.instance.label"]()}
+					</p>
+					<Dropdown
+						options={[
+							m["settings.vertd.instance.auto"](),
+							m["settings.vertd.instance.eu"](),
+							m["settings.vertd.instance.us"](),
+							m["settings.vertd.instance.custom"](),
+						]}
+						onselect={(selected) => {
+							let inner: VertdInner;
+							switch (selected) {
+								case m["settings.vertd.instance.auto"]():
+									inner = { type: "auto" };
+									break;
+								case m["settings.vertd.instance.eu"]():
+									inner = { type: "eu" };
+									break;
+								case m["settings.vertd.instance.us"]():
+									inner = { type: "us" };
+									break;
+								case m["settings.vertd.instance.custom"]():
+									inner = {
+										type: "custom",
+									};
+									break;
+								default:
+									inner = { type: "auto" };
+							}
+							VertdInstance.instance.set(inner);
+						}}
+						selected={(() => {
+							switch (VertdInstance.instance.innerData().type) {
+								case "auto":
+									return m["settings.vertd.instance.auto"]();
+								case "eu":
+									return m["settings.vertd.instance.eu"]();
+								case "us":
+									return m["settings.vertd.instance.us"]();
+								case "custom":
+									return m[
+										"settings.vertd.instance.custom"
+									]();
+							}
+						})()}
+						style="settings"
+					/>
+					{#if VertdInstance.instance.innerData().type === "custom"}
+						<FancyInput
+							type="text"
+							placeholder={m[
+								"settings.vertd.instance.url_placeholder"
+							]()}
+							bind:value={settings.vertdURL}
+						/>
+					{/if}
+					<p class="text-sm font-normal text-muted">
+						{m["settings.vertd.info"]({
+							sizeLimit: vertdSizeLimitLabel,
+							commitId: vertdCommit ?? "N/A",
+						})}
+					</p>
+				</div>
+			</div>
+			<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<p class="text-base font-bold">
+						{m["settings.vertd.conversion_speed.label"]()}
+					</p>
+					<p class="text-sm font-normal text-muted">
+						{m["settings.vertd.conversion_speed.description"]()}
+					</p>
+				</div>
+				<Dropdown
+					options={[
+						m["settings.vertd.conversion_speed.speeds.very_slow"](),
+						m["settings.vertd.conversion_speed.speeds.slower"](),
+						m["settings.vertd.conversion_speed.speeds.slow"](),
+						m["settings.vertd.conversion_speed.speeds.medium"](),
+						m["settings.vertd.conversion_speed.speeds.fast"](),
+						m[
+							"settings.vertd.conversion_speed.speeds.ultra_fast"
+						](),
+					]}
+					style="settings"
+					selected={(() => {
+						switch (settings.vertdSpeed) {
+							case "verySlow":
+								return m[
+									"settings.vertd.conversion_speed.speeds.very_slow"
+								]();
+							case "slower":
+								return m[
+									"settings.vertd.conversion_speed.speeds.slower"
+								]();
+							case "slow":
+								return m[
+									"settings.vertd.conversion_speed.speeds.slow"
+								]();
+							case "medium":
+								return m[
+									"settings.vertd.conversion_speed.speeds.medium"
+								]();
+							case "fast":
+								return m[
+									"settings.vertd.conversion_speed.speeds.fast"
+								]();
+							case "ultraFast":
+								return m[
+									"settings.vertd.conversion_speed.speeds.ultra_fast"
+								]();
+						}
+					})()}
+					onselect={(selected) => {
+						switch (selected) {
+							case m[
+								"settings.vertd.conversion_speed.speeds.very_slow"
+							]():
+								settings.vertdSpeed = "verySlow";
+								break;
+							case m[
+								"settings.vertd.conversion_speed.speeds.slower"
+							]():
+								settings.vertdSpeed = "slower";
+								break;
+							case m[
+								"settings.vertd.conversion_speed.speeds.slow"
+							]():
+								settings.vertdSpeed = "slow";
+								break;
+							case m[
+								"settings.vertd.conversion_speed.speeds.medium"
+							]():
+								settings.vertdSpeed = "medium";
+								break;
+							case m[
+								"settings.vertd.conversion_speed.speeds.fast"
+							]():
+								settings.vertdSpeed = "fast";
+								break;
+							case m[
+								"settings.vertd.conversion_speed.speeds.ultra_fast"
+							]():
+								settings.vertdSpeed = "ultraFast";
+								break;
+						}
+					}}
+				/>
+			</div>
+			<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<p class="text-base font-bold">
+						{m["settings.vertd.custom_headers.label"]()}
+					</p>
+					<p class="text-sm font-normal text-muted">
+						{m["settings.vertd.custom_headers.description"]()}
+					</p>
+					<FancyInput
+						type="text"
+						bind:value={settings.vertdCustomHeaders}
+						placeholder={m[
+							"settings.vertd.custom_headers.placeholder"
+						]()}
+						multiline
+					/>
+				</div>
+			</div>
+		</div>
+	</div></Panel
+>

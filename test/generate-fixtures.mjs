@@ -1,0 +1,24 @@
+import {zipSync,strToU8} from 'fflate';
+import {deflateSync} from 'node:zlib';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+const directory=resolve(process.argv[2]||'.test-output');await mkdir(directory,{recursive:true});
+function crc32(data){let crc=0xffffffff;for(const b of data){crc^=b;for(let n=0;n<8;n++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return (crc^0xffffffff)>>>0;}
+function chunk(name,data){const type=Buffer.from(name),length=Buffer.alloc(4),crc=Buffer.alloc(4);length.writeUInt32BE(data.length);crc.writeUInt32BE(crc32(Buffer.concat([type,data])));return Buffer.concat([length,type,data,crc]);}
+const width=64,height=64,header=Buffer.alloc(13);header.writeUInt32BE(width,0);header.writeUInt32BE(height,4);header[8]=8;header[9]=6;
+const pixels=Buffer.alloc(height*(1+width*4));
+for(let y=0;y<height;y++)for(let x=0;x<width;x++){const at=y*(1+width*4)+1+x*4,arrow=(y>28&&y<36&&x>14&&x<48)||(x>37&&x<48&&Math.abs(y-32)<(48-x));pixels[at]=arrow?245:35;pixels[at+1]=arrow?247:90;pixels[at+2]=arrow?255:210;pixels[at+3]=255;}
+const png=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',header),chunk('IDAT',deflateSync(pixels)),chunk('IEND',Buffer.alloc(0))]);
+await writeFile(resolve(directory,'convertverse-prueba.png'),png);
+const icoHeader=Buffer.alloc(22);icoHeader.writeUInt16LE(1,2);icoHeader.writeUInt16LE(1,4);icoHeader[6]=width;icoHeader[7]=height;icoHeader.writeUInt16LE(1,10);icoHeader.writeUInt16LE(32,12);icoHeader.writeUInt32LE(png.length,14);icoHeader.writeUInt32LE(22,18);
+await writeFile(resolve(directory,'convertverse-prueba.ico'),Buffer.concat([icoHeader,png]));
+const cell=text=>`<w:tc><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:tc>`;
+const document=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Informe de prueba — ConvertVerse</w:t></w:r></w:p><w:p><w:r><w:t>Conversión de Word a PDF: acentos áéíóú, eñe ñ y texto seleccionable.</w:t></w:r></w:p><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Este texto debe conservar la negrita.</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="4500"/><w:gridCol w:w="4500"/></w:tblGrid><w:tr>${cell('Formato')}${cell('Resultado')}</w:tr><w:tr>${cell('DOCX')}${cell('PDF')}</w:tr></w:tbl><w:p><w:r><w:t>Fin del documento de prueba. No contiene datos personales.</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
+const types=`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
+const styles=`<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style></w:styles>`;
+const rootRels=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+const rels=`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+const docx=zipSync(Object.fromEntries(Object.entries({'[Content_Types].xml':types,'_rels/.rels':rootRels,'word/document.xml':document,'word/styles.xml':styles,'word/_rels/document.xml.rels':rels}).map(([name,text])=>[name,strToU8(text)])));
+await writeFile(resolve(directory,'convertverse-prueba.docx'),docx);
+const wav=Buffer.alloc(44+8000*2);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(16000,40);for(let i=0;i<8000;i++)wav.writeInt16LE(Math.round(Math.sin(i/8000*440*Math.PI*2)*1800),44+i*2);await writeFile(resolve(directory,'convertverse-prueba.wav'),wav);
+console.log('Fixtures sintéticos creados en '+directory);

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /convertverse/
+Sitemap: https://guillermogarcia137.github.io/convertverse/sitemap.xml

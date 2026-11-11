@@ -1,0 +1,35 @@
+<script lang="ts">
+	import { duration, fade } from "#lib/util/animation";
+	import { quintOut } from "svelte/easing";
+	import Dialog from "../functional/popups/Dialog.svelte";
+	import {
+		type Dialog as DialogType,
+		dialogs,
+	} from "#lib/store/DialogProvider";
+
+	let dialogList = $state<DialogType[]>([]);
+
+	dialogs.subscribe((value) => {
+		dialogList = value as DialogType[];
+	});
+</script>
+
+{#if dialogList.length > 0}
+	<div
+		class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+		in:fade={{
+			duration,
+			easing: quintOut,
+		}}
+		out:fade={{
+			duration,
+			easing: quintOut,
+		}}
+	>
+		{#each dialogList as dialog, i (dialog.id)}
+			{#if i === 0}
+				<Dialog {...dialog} />
+			{/if}
+		{/each}
+	</div>
+{/if}

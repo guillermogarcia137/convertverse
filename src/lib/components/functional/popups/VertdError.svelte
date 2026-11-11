@@ -1,0 +1,110 @@
+<script lang="ts" module>
+	export interface VertdErrorProps {
+		jobId: string;
+		auth: string;
+		from?: string;
+		to?: string;
+		errorMessage?: string;
+		filename?: string;
+	}
+</script>
+
+<script lang="ts">
+	import { vertdFetch } from "#lib/converters/vertd/vertd.svelte";
+
+	import { m } from "#lib/paraglide/messages";
+	import { formatError } from "#lib/util/error";
+	import { ToastManager, type ToastProps } from "#lib/util/toast.svelte";
+	import { addDialog } from "#lib/store/DialogProvider";
+	import VertdErrorDetails from "./VertdErrorDetails.svelte";
+
+	const toast: ToastProps<VertdErrorProps> = $props();
+
+	let submitting = $state(false);
+
+	export const title = m["convert.errors.vertd.generic.title"]();
+
+	const remove = () => {
+		ToastManager.remove(toast.id);
+	};
+
+	const submit = async () => {
+		submitting = true;
+		try {
+			await submitInner();
+		} finally {
+			submitting = false;
+		}
+	};
+
+	const submitInner = async () => {
+		try {
+			await vertdFetch(
+				"/api/keep",
+				{
+					method: "POST",
+				},
+				{
+					token: toast.additional.auth,
+					id: toast.additional.jobId,
+				},
+			);
+		} catch (e) {
+			ToastManager.add({
+				type: "error",
+				message: m["convert.errors.vertd.failed_to_keep"]({
+					error: formatError(e),
+				}),
+			});
+		}
+
+		ToastManager.remove(toast.id);
+	};
+
+	const showDetails = () => {
+		addDialog(
+			m["convert.errors.vertd.details.view"](),
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			VertdErrorDetails as any,
+			[
+				{
+					text: "Close",
+					action: () => {},
+				},
+			],
+			"info",
+			{
+				jobId: toast.additional.jobId || "Unknown",
+				from: toast.additional.from || "Unknown",
+				to: toast.additional.to || "Unknown",
+				errorMessage: toast.additional.errorMessage || "Unknown error",
+			},
+		);
+	};
+</script>
+
+<div class="flex flex-col gap-4">
+	<p class="text-black">{m["convert.errors.vertd.generic.body"]()}</p>
+	<div class="flex flex-col gap-2">
+		<button
+			onclick={showDetails}
+			class="btn h-fit w-full rounded-lg bg-accent-blue py-2 text-black"
+			disabled={submitting}
+			>{m["convert.errors.vertd.generic.view"]()}</button
+		>
+		<div class="flex gap-4">
+			<button
+				onclick={submit}
+				class="btn h-fit w-full rounded-lg bg-accent-red-alt py-2 text-white"
+				disabled={submitting}
+				>{m["convert.errors.vertd.generic.yes"]()}</button
+			>
+			<button
+				onclick={remove}
+				class="btn h-fit w-full rounded-lg py-2"
+				disabled={submitting}
+				>{m["convert.errors.vertd.generic.no"]()}</button
+			>
+		</div>
+	</div>
+</div>

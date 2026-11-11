@@ -1,0 +1,51 @@
+name: Publish ConvertVerse
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BASE_PATH: /convertverse
+      PUB_HOSTNAME: guillermogarcia137.github.io
+      PUB_PLAUSIBLE_URL: ''
+      PUB_ENV: production
+      PUB_VERTD_URL: ''
+      PUB_DISABLE_ALL_EXTERNAL_REQUESTS: 'true'
+      PUB_DISABLE_FAILURE_BLOCKS: 'false'
+      PUB_DONATION_URL: ''
+      PUB_STRIPE_KEY: ''
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run test
+      - run: bun run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{steps.deployment.outputs.page_url}}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

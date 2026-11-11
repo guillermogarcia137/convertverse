@@ -1,0 +1,113 @@
+<script lang="ts">
+	import { fade, fly } from "#lib/util/animation";
+	import {
+		BanIcon,
+		CheckIcon,
+		InfoIcon,
+		TriangleAlertIcon,
+		XIcon,
+	} from "@lucide/svelte";
+	import { quintOut } from "svelte/easing";
+	import { ToastManager } from "#lib/util/toast.svelte";
+	import type { ToastProps } from "#lib/util/toast.svelte";
+	import type { SvelteComponent } from "svelte";
+	import clsx from "clsx";
+	import type { Toast as ToastType } from "#lib/util/toast.svelte";
+	import { sanitize } from "#lib/store/index.svelte";
+
+	const props: {
+		toast: ToastType<unknown>;
+	} = $props();
+
+	// svelte-ignore state_referenced_locally
+	const { id, type, message, durations } = props.toast;
+
+	// svelte-ignore state_referenced_locally
+	const additional =
+		"additional" in props.toast ? props.toast.additional : {};
+
+	const colors = {
+		success: "purple",
+		error: "red",
+		info: "blue",
+		warning: "pink",
+	};
+
+	const Icons = {
+		success: CheckIcon,
+		error: BanIcon,
+		info: InfoIcon,
+		warning: TriangleAlertIcon,
+	};
+
+	let color = $derived(colors[type]);
+	let Icon = $derived(Icons[type]);
+
+	let msg = $state<SvelteComponent<ToastProps>>();
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const title = $derived(((msg as any)?.title as string) ?? "");
+
+	// intentionally unused. this is so tailwind can generate the css for these colours as it doesn't detect if it's dynamically loaded
+	// this would lead to the colours not being generated in the final css file by tailwind
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const colourVariants = [
+		"border-accent-pink-alt",
+		"border-accent-red-alt",
+		"border-accent-purple-alt",
+		"border-accent-blue-alt",
+	];
+</script>
+
+<div
+	class="flex max-w-[100%] flex-col gap-2 p-4 md:max-w-lg bg-accent-{color} border-accent-{color}-alt rounded-lg border-l-4 shadow-md"
+	in:fly={{
+		duration: durations.enter,
+		easing: quintOut,
+		x: 0,
+		y: 100,
+	}}
+	out:fade={{
+		duration: durations.exit,
+		easing: quintOut,
+	}}
+>
+	<div class="flex w-full flex-row items-center justify-between gap-4">
+		<div class="flex items-center gap-4">
+			<Icon
+				class="h-6 w-6 flex-shrink-0 text-black"
+				size="24"
+				fill="none"
+			/>
+			<p
+				class={clsx("whitespace-pre-wrap text-black", {
+					"font-normal": !title,
+				})}
+			>
+				{#if title && typeof title === "string"}
+					{@html sanitize(title)}
+				{:else if message && typeof message === "string"}
+					{@html sanitize(message)}
+				{/if}
+			</p>
+		</div>
+		<button
+			class="flex-shrink-0 text-gray-600 hover:text-black"
+			onclick={() => ToastManager.remove(id)}
+		>
+			<XIcon size="16" />
+		</button>
+	</div>
+	{#if typeof message !== "string"}
+		{@const MessageComponent = message}
+		<div class="font-normal">
+			<MessageComponent
+				bind:this={msg}
+				{durations}
+				{id}
+				{message}
+				{type}
+				{additional}
+			/>
+		</div>
+	{/if}
+</div>
