@@ -14,10 +14,13 @@
 	import { m } from "#lib/paraglide/messages";
 	import { clsx } from "clsx";
 
+	// Los valores $derived se recalculan cuando cambian sus dependencias, por ejemplo al terminar una conversión.
 	const length = $derived(files.files.length);
 	const progress = $derived(files.files.filter((f) => f.result).length);
 	const manyFiles = $derived(files.files.length > 50);
 	const compactActions = $derived(manyFiles && !$isMobile);
+	// Solo ofrece un formato común si todos los archivos tienen el mismo conjunto de motores.
+	// Set representa un conjunto sin duplicados; every exige que todos cumplan la condición.
 	const canSetAll = $derived.by(() => {
 		const [firstFile, ...otherFiles] = files.files;
 		if (!firstFile?.converters.length) return false;

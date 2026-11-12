@@ -31,12 +31,15 @@ type Format =
 let wasm: ArrayBuffer = null!;
 let pandocPromise: Promise<PandocInstance> | null = null;
 
+// Reutiliza una instancia del motor. Si falla la preparación permite un nuevo intento.
 const ensurePandoc = (): Promise<PandocInstance> =>
 	(pandocPromise ??= createPandocInstance(wasm).catch((err) => {
 		pandocPromise = null;
 		throw err;
 	}));
 
+// El worker es un hilo separado del navegador: recibe mensajes y devuelve bytes, sin manipular el DOM.
+// La operación load prepara el motor; convert procesa el documento dentro de su sistema de archivos virtual.
 const handleMessage = async (
 	message: WorkerMessage,
 ): Promise<Partial<WorkerMessage>> => {

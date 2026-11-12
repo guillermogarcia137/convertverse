@@ -1,16 +1,48 @@
 <script lang="ts">
-  import {onMount} from 'svelte';
-  import {PaletteIcon,SearchIcon,XIcon,CheckIcon} from '@lucide/svelte';
-  import {themes,palette} from '#lib/themes/catalog.js';
-  import {applyTheme,readTheme} from '#lib/themes/theme';
-  import {theme} from '#lib/store/index.svelte';
-  let dialog:HTMLDialogElement;
-  let selected=$state('navy-sans'),query=$state(''),filter=$state('all');
-  const filters=[['all','Todos'],['featured','Destacados'],['dark','Oscuros'],['light','Claros'],['Omarchy','Omarchy']];
-  let choices=$derived(themes.filter(t=>(filter==='all'||filter==='featured'&&t.featured||t.mode===filter||t.group===filter)&&(t.label+' '+t.group).toLowerCase().includes(query.toLowerCase())));
-  let active=$derived(themes.find(t=>t.id===selected)||themes[1]);
-  function choose(id:string){const next=applyTheme(id);selected=next.id;theme.set(next.mode as 'light'|'dark');}
-  onMount(()=>{selected=readTheme();const update=(event:Event)=>{selected=(event as CustomEvent).detail.id;};window.addEventListener('convertverse:theme',update);return()=>window.removeEventListener('convertverse:theme',update);});
+import { onMount } from "svelte";
+import { PaletteIcon, SearchIcon, XIcon, CheckIcon } from "@lucide/svelte";
+import { themes, palette } from "#lib/themes/catalog.js";
+import { applyTheme, readTheme } from "#lib/themes/theme";
+import { theme } from "#lib/store/index.svelte";
+let dialog: HTMLDialogElement;
+// Estado local del diálogo: tema elegido, texto de búsqueda y filtro activo.
+let selected = $state("navy-sans"),
+  query = $state(""),
+  filter = $state("all");
+const filters = [
+  ["all", "Todos"],
+  ["featured", "Destacados"],
+  ["dark", "Oscuros"],
+  ["light", "Claros"],
+  ["Omarchy", "Omarchy"],
+];
+// Svelte recalcula esta lista al cambiar query o filter, sin modificar el catálogo original.
+let choices = $derived(
+  themes.filter(
+    (t) =>
+      (filter === "all" ||
+        (filter === "featured" && t.featured) ||
+        t.mode === filter ||
+        t.group === filter) &&
+      (t.label + " " + t.group).toLowerCase().includes(query.toLowerCase()),
+  ),
+);
+let active = $derived(themes.find((t) => t.id === selected) || themes[1]);
+// Aplica y guarda el tema y actualiza el almacén heredado para mantener coherentes todos los controles.
+function choose(id: string) {
+  const next = applyTheme(id);
+  selected = next.id;
+  theme.set(next.mode as "light" | "dark");
+}
+// Escucha cambios de tema externos al diálogo y retira ese evento al desmontarse.
+onMount(() => {
+  selected = readTheme();
+  const update = (event: Event) => {
+    selected = (event as CustomEvent).detail.id;
+  };
+  window.addEventListener("convertverse:theme", update);
+  return () => window.removeEventListener("convertverse:theme", update);
+});
 </script>
 <button type="button" class="cv-theme-trigger" onclick={()=>dialog.showModal()} aria-label="Elegir tema y estilo" aria-haspopup="dialog"><PaletteIcon size={30}/><span>Temas<small>{active.label}</small></span></button>
 <dialog bind:this={dialog} class="cv-gallery" aria-labelledby="cv-gallery-title" onclick={event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}}}>

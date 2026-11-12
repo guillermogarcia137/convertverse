@@ -14,14 +14,17 @@
 
 	const { class: classList }: Props = $props();
 
+	// bind:this, en el HTML de abajo, entrega la referencia real del botón y del selector a estas variables.
 	let uploaderButton = $state<HTMLButtonElement>();
 	let fileInput = $state<HTMLInputElement>();
 
+	// Abre el selector nativo. Elegir un archivo permite leerlo localmente; no lo envía a un servidor.
 	const uploadFiles = async () => {
 		if (!fileInput) return;
 		fileInput.click();
 	};
 
+	// Espera a que el almacén registre los archivos y navega a conversiones solo si se añadió alguno.
 	const handleFileChange = async () => {
 		if (!fileInput) return;
 		const oldLength = files.files.length;
@@ -29,6 +32,7 @@
 		if (files.files.length !== oldLength) goto(resolve("/convert"));
 	};
 
+	// onMount se ejecuta al aparecer el componente. La función devuelta retira los eventos al desmontarlo.
 	onMount(() => {
 		const handler = (e: Event) => {
 			e.preventDefault();

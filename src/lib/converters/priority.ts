@@ -7,6 +7,8 @@ export const PREFERRED_PRIORITY = 5;
 const normalize = (format: string) =>
 	(format.startsWith(".") ? format.slice(1) : format).toLowerCase();
 
+// Preferencias por formato: el orden elige qué motor intentar antes.
+// Estar en esta tabla no garantiza disponibilidad; también se comprueba el navegador y el formato de salida.
 export const FORMAT_ENGINES: Record<string, string[]> = {
 	// images - prefer libvips for speed & memory efficiency, then ImageMagick
 	png: ["libvips", "imagemagick"],
@@ -63,6 +65,7 @@ export const FORMAT_ENGINES: Record<string, string[]> = {
 	y4m: ["vertd", "ffmpeg-video"],
 };
 
+// Convierte la posición de la lista en una puntuación: mayor prioridad se intenta primero.
 export function priorityFor(converter: string, format: string): number {
 	const engines = FORMAT_ENGINES[normalize(format)];
 	if (!engines) return DEFAULT_PRIORITY;
@@ -73,6 +76,7 @@ export function priorityFor(converter: string, format: string): number {
 	return Math.max(DEFAULT_PRIORITY, PREFERRED_PRIORITY - index);
 }
 
+// Aplica las preferencias comunes a las fichas de formatos que declara un motor.
 export function applyPriorities(
 	converter: string,
 	formats: FormatInfo[],

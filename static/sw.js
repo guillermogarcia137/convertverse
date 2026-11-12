@@ -15,6 +15,7 @@ const WASM_URL_PATTERNS = [
 	/\/ffmpeg-core[^/]*\.(js|wasm)$/, // ffmpeg wasm core
 ];
 
+// La caché se aplica a los recursos de los motores que coinciden con estos patrones, no a los archivos elegidos para convertir.
 function shouldCacheUrl(url) {
 	const urlObj = new URL(url);
 
@@ -67,6 +68,7 @@ async function revalidate(request) {
 }
 
 // add COOP/COEP headers to requests so we are cross-origin isolated, needed for SharedArrayBuffer
+// Añade cabeceras de aislamiento a las respuestas para que los motores puedan compartir memoria entre hilos.
 function withCrossOriginIsolation(response) {
 	if (response.status === 0) return response;
 
@@ -131,6 +133,7 @@ self.addEventListener("install", (e) => {
 	self.skipWaiting();
 });
 
+// Solo retira cachés antiguas de ConvertVerse; otras apps del mismo dominio conservan las suyas.
 self.addEventListener("activate", (e) => {
 	e.waitUntil(
 		caches
@@ -190,6 +193,7 @@ self.addEventListener("fetch", (e) => {
 	if (revalidateInBackground) e.waitUntil(revalidate(request));
 });
 
+// Recibe consultas del gestor de la página y responde por el puerto enviado con MessageChannel.
 self.addEventListener("message", (e) => {
 	if (!e.data) return;
 	const type = e.data.type;

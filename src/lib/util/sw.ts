@@ -17,6 +17,7 @@ export interface CacheInfo {
 	}>;
 }
 
+// Coordina el service worker, que conserva recursos de motores entre visitas y prepara el aislamiento del navegador.
 class ServiceWorkerManager {
 	private registration: ServiceWorkerRegistration | null = null;
 	private initialization: Promise<void> | null = null;
@@ -55,6 +56,8 @@ class ServiceWorkerManager {
 	}
 
 	// ensure we are cross-origin isolated (COOP/COEP) so we can use SharedArrayBuffer
+	// Algunos motores necesitan SharedArrayBuffer, memoria compartida entre hilos.
+	// Solo se intenta una recarga de preparación para evitar un bucle si el aislamiento no llega a activarse.
 	private ensureCrossOriginIsolation(): void {
 		const controlled = !!navigator.serviceWorker.controller;
 		const isolated = window.crossOriginIsolated === true;
@@ -101,6 +104,7 @@ class ServiceWorkerManager {
         window.location.reload();
 	}
 
+	// MessageChannel abre una conversación privada con el service worker para consultar su caché.
 	async getCacheInfo(): Promise<CacheInfo> {
 		if (!this.registration || !navigator.serviceWorker.controller) {
 			console.warn(
@@ -132,6 +136,7 @@ class ServiceWorkerManager {
 		});
 	}
 
+	// Pide borrar los recursos de motores descargados; es una caché distinta de la lista de archivos en memoria.
 	async clearCache(): Promise<void> {
 		if (!this.registration || !navigator.serviceWorker.controller) {
 			throw new Error("No service worker available for cache clearing");
