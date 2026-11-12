@@ -100,6 +100,8 @@ const processServerWarningQueue = () => {
 
 export type UnavailableReasons = "vertd-size-limit" | "other-reason"; // find more stuff to add
 
+// Modelo de una fila: archivo original, formatos, ajustes, motor activo, progreso y resultado.
+// Las propiedades $state son reactivas: Svelte refleja sus cambios sin reconstruir a mano el HTML.
 export class VertFile {
 	public id: string = Math.random().toString(36).slice(2, 8);
 	public readonly file: File;
@@ -171,6 +173,7 @@ export class VertFile {
 		this.postDownload = cleanup;
 	}
 
+	// Libera recursos del archivo al retirarlo y evita seguir utilizando un resultado que ya no pertenece a la lista.
 	public dispose(): Promise<void> {
 		this.disposed = true;
 		return (this.disposal ??= (async () => {
@@ -202,6 +205,7 @@ export class VertFile {
 		return converterInstance.getAvailableSettings(input);
 	}
 
+	// Filtra motores por entrada, salida, disponibilidad y prioridad. No todos los pares de formatos son compatibles.
 	public findConverters(
 		supportedFormats: string[] = [this.from],
 		unavailableConverters: Record<string, UnavailableReasons> = {},
@@ -315,6 +319,7 @@ export class VertFile {
 		);
 	}
 
+	// Comparte la tarea de detección entre llamadas para no leer varias veces la misma cabecera.
 	public checkFileType(): Promise<void> {
 		return (this.fileTypeCheck ??= this.detectFileType());
 	}
@@ -332,6 +337,7 @@ export class VertFile {
 		return target ?? this.from;
 	}
 
+	// Intenta identificar el contenido real del archivo, además de mirar su extensión, antes de elegir un motor.
 	private async detectFileType() {
 		const detectionEnabled =
 			readSettings<{ fileTypeDetection?: boolean }>().fileTypeDetection ??
@@ -425,6 +431,8 @@ export class VertFile {
 		}
 	}
 
+	// Orquesta una conversión: elige motor, normaliza ajustes, prepara recursos y guarda el resultado o el error.
+	// processing evita iniciar dos trabajos para la misma fila; finally restablece el estado al terminar.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async convert(...args: any[]) {
 		if (this.disposed || this.processing) return;
@@ -667,6 +675,7 @@ export class VertFile {
 		});
 	}
 
+	// Convierte los miembros del ZIP con el motor seleccionado y empaqueta las salidas como un único resultado.
 	private async convertZip(
 		converter: Converter,
 		settings: ConversionSettings,
@@ -858,6 +867,7 @@ export class VertFile {
 		});
 	}
 
+	// Marca el trabajo como cancelado y solicita detener el motor activo; sus respuestas tardías no deben reactivar la fila.
 	public async cancel() {
 		if (!this.processing) return;
 		const selectedConverter = this.conversionSettings.converter;
@@ -921,6 +931,8 @@ export class VertFile {
 		}
 	}
 
+	// Descarga el resultado, sin tocar el original. Para archivos grandes intenta escribir el flujo directamente al disco.
+	// En otros navegadores crea una URL temporal de Blob y la libera después de iniciar la descarga.
 	public async download() {
 		if (!this.result) throw new Error("No result found");
 
@@ -999,6 +1011,7 @@ export class VertFile {
 		a.remove();
 	}
 
+	// Lee el archivo por fragmentos y combina sus huellas; evita pedir un único ArrayBuffer del tamaño de todo el archivo.
 	public hash(): Promise<string> {
 		const stream = this.file.stream();
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity

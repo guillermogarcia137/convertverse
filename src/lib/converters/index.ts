@@ -12,6 +12,8 @@ import { VertdConverter } from "./vertd/vertd.svelte";
 import { VipsConverter } from "./vips/vips.svelte";
 
 // TODO: change this to include category with initialization to replace converterCategories and maybe categories as well
+// Registra motores de conversión locales. Cada motor declara formatos y sabe preparar sus recursos.
+// El adaptador remoto vertd solo se añade si la configuración permite peticiones externas; esta web lo desactiva.
 const getConverters = (): Converter[] => {
 	const converters: Converter[] = [
 		new MagickConverter(),
@@ -56,6 +58,7 @@ export function getConverterByFormat(format: string) {
 	return null;
 }
 
+// Construimos las listas del selector desde los formatos de los motores, para que la interfaz no prometa salidas inexistentes.
 export const categories: Categories = {
 	image: { formats: [""], canConvertTo: [] },
 	video: { formats: [""], canConvertTo: ["audio"] },
@@ -98,6 +101,7 @@ categories.doc.formats =
 		?.supportedFormats.filter((f) => f.toSupported && f.isNative)
 		.map((f) => f.name) || [];
 
+// Ordena motores según su soporte del formato. El resultado es una función comparadora para Array.sort.
 export const byNative = (format: string) => {
 	// rank native support first, then non-native, then unsupported.
 	const rank = (converter: Converter) => {
@@ -109,6 +113,7 @@ export const byNative = (format: string) => {
 	return (a: Converter, b: Converter) => rank(a) - rank(b);
 };
 
+// Resume varios motores en un estado de categoría; puede haber soporte parcial aunque otro motor no esté listo.
 export function categoryStatus(category: ConverterCategory): WorkerStatus {
 	const names =
 		(converterCategories as Record<string, string[]>)[category] ?? [];

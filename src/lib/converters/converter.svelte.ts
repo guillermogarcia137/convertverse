@@ -10,6 +10,7 @@ import { error, log } from "#lib/util/logger.svelte";
 import { SvelteSet } from "svelte/reactivity";
 import { canonicalCodecName, codecLabel } from "./codec-labels";
 
+// Estos textos son estados internos del motor. $state permite que Svelte actualice la interfaz cuando cambian.
 export type WorkerStatus =
 	| "idle" // not initialized yet (nothing downloaded)
 	| "downloading" // fetching the converter's assets (wasm/js)
@@ -28,6 +29,7 @@ export function formatDuration(ms: number): string {
 	return `${minutes}m ${remaining}s`;
 }
 
+// Describe un formato y en qué dirección se admite: leerlo no implica poder escribirlo.
 export class FormatInfo {
 	public name: string;
 
@@ -52,6 +54,8 @@ export class FormatInfo {
 /**
  * Base class for all converters.
  */
+// Contrato común de los motores. Las clases hijas concretan la descarga, preparación y conversión.
+// WASM (WebAssembly) ejecuta el motor compilado dentro del navegador; no es una subida del archivo.
 export class Converter {
 	/**
 	 * The public name of the converter.
@@ -88,12 +92,14 @@ export class Converter {
 	 */
 	protected async setup(): Promise<void> {}
 
+	// Reutiliza la misma Promise durante la preparación para que dos archivos no descarguen dos veces el mismo motor.
 	public init(): Promise<void> {
 		// allow a another attempt if the previous one failed
 		if (this.status === "error") this.initPromise = null;
 		return (this.initPromise ??= this.runInit());
 	}
 
+	// await espera cada paso sin bloquear la interfaz; finally limpia el temporizador incluso si hubo un error.
 	private async runInit(): Promise<void> {
 		if (this.status === "ready" || this.status === "partially-ready")
 			return;
@@ -160,6 +166,8 @@ export class Converter {
 		return defaults;
 	}
 
+	// Traduce ajustes entre motores: el mismo códec puede llamarse avc o h264 según el adaptador.
+	// Devuelve también qué ajustes cambiaron para poder informar a la persona.
 	public async normalizeSettings(
 		input: VertFile,
 		to: string,
@@ -248,6 +256,7 @@ export class Converter {
 	}
 
 	// used for checking if a conversion was cancelled before it started (e.g. during init)
+	// Comprueba cancelaciones hechas mientras el motor aún se estaba preparando; evita iniciar un trabajo ya retirado.
 	protected throwIfCancelled(input: VertFile) {
 		if (this.cancelledBeforeStart.has(input.id)) {
 			this.cancelledBeforeStart.delete(input.id);

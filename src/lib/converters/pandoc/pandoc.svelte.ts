@@ -6,6 +6,7 @@ import { browser } from "$app/env";
 import pandocWasm from "pandoc-wasm/wasm?url";
 import { Converter, FormatInfo, formatDuration } from "../converter.svelte";
 
+// Adaptador de documentos: el worker ejecuta Pandoc y esta clase comunica el resultado con la interfaz.
 export class PandocConverter extends Converter {
 	public name = "pandoc";
 	public ready = $state(false);
@@ -22,6 +23,7 @@ export class PandocConverter extends Converter {
 		this.log(`created converter`);
 	}
 
+	// Carga el código y WebAssembly del motor cuando se necesita convertir un documento.
 	protected async download(): Promise<void> {
 		if (!browser) return;
 		try {
@@ -39,6 +41,7 @@ export class PandocConverter extends Converter {
 		}
 	}
 
+	// Envía el documento al worker. Para PDF pide primero HTML y después lo transforma con pdfmake.
 	public async convert(file: VertFile, to: string): Promise<VertFile> {
         if (to === '.pdf' || to === 'pdf') {
             const html = await this.convert(file, '.html');
@@ -174,6 +177,7 @@ export class PandocConverter extends Converter {
 	];
 }
 
+// Espera una respuesta del worker y desconecta los manejadores cuando termina o vence el tiempo de espera.
 function waitForMessage(
 	worker: Worker,
 	signal: AbortSignal,

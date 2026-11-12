@@ -1,11 +1,29 @@
 <script lang="ts">
-  import {page} from '$app/state';
-  import {resolve} from '$app/paths';
-  import {files} from '#lib/store/index.svelte';
-  import {ArrowUpRightIcon,ArrowLeftRightIcon,FolderOpenIcon,SettingsIcon,InfoIcon,ShieldCheckIcon} from '@lucide/svelte';
-  import ThemeGallery from './ThemeGallery.svelte';
-  let {children}=$props();
-  const links=[{url:resolve('/'),title:'Convertir archivos',icon:FolderOpenIcon},{url:resolve('/convert'),title:'Mis conversiones',icon:ArrowLeftRightIcon},{url:resolve('/settings'),title:'Preferencias',icon:SettingsIcon},{url:resolve('/about'),title:'Acerca del proyecto',icon:InfoIcon}];
+import { page } from "$app/state";
+import { resolve } from "$app/paths";
+import { files } from "#lib/store/index.svelte";
+import {
+  ArrowUpRightIcon,
+  ArrowLeftRightIcon,
+  FolderOpenIcon,
+  SettingsIcon,
+  InfoIcon,
+  ShieldCheckIcon,
+} from "@lucide/svelte";
+import ThemeGallery from "./ThemeGallery.svelte";
+// children es el contenido de la ruta actual; la estructura común de navegación permanece alrededor.
+let { children } = $props();
+// La misma lista alimenta la navegación de escritorio y móvil; resolve conserva el prefijo del proyecto.
+const links = [
+  { url: resolve("/"), title: "Convertir archivos", icon: FolderOpenIcon },
+  {
+    url: resolve("/convert"),
+    title: "Mis conversiones",
+    icon: ArrowLeftRightIcon,
+  },
+  { url: resolve("/settings"), title: "Preferencias", icon: SettingsIcon },
+  { url: resolve("/about"), title: "Acerca del proyecto", icon: InfoIcon },
+];
 </script>
 <a class="cv-skip" href="#cv-main">Saltar al contenido</a>
 <aside class="cv-sidebar">

@@ -43,6 +43,7 @@ const zipExtension = (filename: string): string => {
 };
 
 // detect a media sequence zip (frameSequence or DASH) from its members
+// Distingue un ZIP normal de secuencias de imágenes o fragmentos de vídeo antes de elegir cómo convertirlo.
 function detectSequenceKind(
 	filenames: string[],
 ): "frameSequence" | "dash" | undefined {
@@ -67,6 +68,7 @@ function detectSequenceKind(
 class Files {
 	public files = $state<VertFile[]>([]);
 
+	// Retirar una fila también libera sus recursos y cancela el trabajo asociado; no basta con ocultarla.
 	public async remove(file: VertFile): Promise<void> {
 		this.files = this.files.filter((entry) => entry !== file);
 		await file.dispose();
@@ -92,6 +94,7 @@ class Files {
 		return selectedConverter ? [selectedConverter] : compatibleConverters;
 	}
 
+	// La disponibilidad depende del motor que necesita este archivo, no de que todos los motores de la app estén listos.
 	public isReady(file: VertFile): boolean {
 		const requiredConverters = this.getRequiredConverters(file);
 		if (requiredConverters.length === 0) return false;
@@ -103,6 +106,7 @@ class Files {
 	}
 
 	// preload first required converter when added to list (or changing format)
+	// Prepara solo los motores requeridos por el archivo para reducir descargas y esperas innecesarias.
 	public preloadConverters(file: VertFile): void {
 		const [preferred] = this.getRequiredConverters(file);
 		void preferred?.init();
@@ -301,6 +305,8 @@ class Files {
 		}
 	}
 
+	// Examina miembros del ZIP: si comparten un motor compatible puede tratarlo como un lote único.
+	// Si mezclan formatos incompatibles, los incorpora como archivos individuales.
 	private async _handleZipFile(input: VertFile): Promise<void> {
 		const file = input.file;
 		try {
@@ -480,6 +486,8 @@ class Files {
 		});
 	}
 
+	// Ruta común de entrada: detecta el formato, encuentra motores compatibles y propone una salida válida.
+	// Añadir una fila todavía no convierte el archivo: la conversión se inicia desde sus controles.
 	private async _add(file: VertFile | File) {
 		const input =
 			file instanceof VertFile ? file : new VertFile(file, ".zip");
@@ -582,6 +590,7 @@ class Files {
 	public add(file: File[] | null | undefined): void;
 	public add(file: VertFile[] | null | undefined): void;
 	public add(file: FileList | null | undefined): void;
+	// La firma acepta File, listas del selector o VertFile ya preparados. void inicia la tarea sin esperar su resultado aquí.
 	public add(
 		file:
 			VertFile | File | VertFile[] | File[] | FileList | null | undefined,
@@ -600,6 +609,7 @@ class Files {
 	public addAsync(file: File[] | null | undefined): Promise<void>;
 	public addAsync(file: VertFile[] | null | undefined): Promise<void>;
 	public addAsync(file: FileList | null | undefined): Promise<void>;
+	// Versión que sí permite esperar a todas las altas antes de navegar a la lista de conversiones.
 	public async addAsync(
 		file:
 			VertFile | File | VertFile[] | File[] | FileList | null | undefined,
@@ -614,6 +624,8 @@ class Files {
 		}
 	}
 
+	// Convierte los pendientes con una cola de concurrencia limitada para no saturar memoria y CPU.
+	// Promise.allSettled recoge todos los resultados aunque falle uno; así los demás archivos pueden terminar.
 	public async convertAll() {
 		const pending = this.files.filter((file) => !file.result && !file.processing && (file.isZip() || file.findConverters([file.from, file.to]).length));
 		const filenames = pending.map((file) => file.name);
@@ -631,6 +643,7 @@ class Files {
 		}
 	}
 
+	// Reúne únicamente resultados disponibles, evita nombres duplicados y genera un ZIP local para descargarlos juntos.
 	public async downloadAll() {
 		if (this.files.length === 0) return;
 
@@ -735,6 +748,7 @@ export function setEffects(effectsEnabled: boolean) {
 	effects.set(effectsEnabled);
 }
 
+// El almacén compartido mantiene la misma lista al cambiar de pantalla; los componentes consultan esta instancia.
 export const files = new Files();
 export const showGradient = writable(true);
 export const gradientColor = writable("");
@@ -769,6 +783,7 @@ export const availableLocales = {
 	"pt-BR": "Português (Brasil)",
 };
 
+// Guarda el idioma y actualiza los mensajes sin recargar toda la página.
 export function updateLocale(newLocale: string) {
 	if (!Object.keys(availableLocales).includes(newLocale)) newLocale = "en";
 
@@ -813,6 +828,7 @@ export function link(
 	return result;
 }
 
+// Limita el HTML enriquecido a etiquetas y atributos permitidos antes de mostrarlo.
 export function sanitize(
 	html: string,
 	allowedTags: string[] = ["a", "b", "code", "br"],
@@ -857,6 +873,7 @@ function findFirstPositive(
 	return d(b >> 1n, b) - 1n;
 }
 
+// Calcula o recupera un límite de memoria para las conversiones. En móvil usa un valor fijo para evitar pruebas costosas.
 export const getMaxArrayBufferSize = (): number => {
 	if (typeof window === "undefined") return 2 * GB; // default for SSR
 

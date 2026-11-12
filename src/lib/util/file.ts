@@ -8,6 +8,7 @@ export interface ZipEntry {
 	data: Uint8Array;
 }
 
+// File contiene los bytes elegidos por la persona. arrayBuffer los lee en memoria; unzip extrae el ZIP sin subirlo a un servidor.
 export async function extractZip(file: File): Promise<ZipEntry[]> {
 	log(["zip"], `extracting zip: ${file.name}`);
 
@@ -38,12 +39,14 @@ export async function extractZip(file: File): Promise<ZipEntry[]> {
 	});
 }
 
+// Agrupa resultados locales en un ZIP y devuelve sus bytes para tratarlos como un archivo descargable.
 export async function createZip(files: File[]): Promise<Uint8Array> {
 	log(["zip"], `creating zip with ${files.length} files`);
 	const zipBlob = await downloadZip(files).blob();
 	return new Uint8Array(await zipBlob.arrayBuffer());
 }
 
+// Ignora carpetas y metadatos ocultos del sistema para no intentar convertirlos como documentos.
 export function ignoreEntry(filename: string): boolean {
 	const parts = filename.replace(/\\/g, "/").split("/");
 	return (
@@ -53,6 +56,7 @@ export function ignoreEntry(filename: string): boolean {
 	);
 }
 
+// Sustituye las etiquetas de la plantilla de nombres, por ejemplo %name% o %date%, sin cambiar el archivo original.
 export function formatFilename(format: string, file: File | string) {
 	const now = new Date();
 	const iso = now.toISOString();
@@ -77,6 +81,7 @@ export function formatFilename(format: string, file: File | string) {
 		.replace(/%extension%/g, originalExtension);
 }
 
+// Convierte bytes en una cantidad legible; la elección de decimales depende del tamaño mostrado.
 export const formatBytes = (bytes: number): string => {
 	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
 	if (bytes < 1024) return `${bytes} B`;
